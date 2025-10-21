@@ -53,6 +53,7 @@
             :state="foodState"
             class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-center mt-4"
             @submit="onSubmit"
+            @error="onFormError"
           >
             <div class="col-span-1 lg:col-span-2 flex items-center">
               <UFormField class="w-full" label="Food" name="id" required>
@@ -183,7 +184,7 @@ import { useFoodStore } from "~/stores/food";
 import { watch, shallowRef, ref, reactive, computed } from "vue";
 import { h } from "vue";
 import * as z from "zod"; // <- zod para schema (UI4 suporta Standard Schema) :contentReference[oaicite:4]{index=4}
-
+const toast = useToast();
 const df = new DateFormatter("en-US", { dateStyle: "medium" });
 
 const now = new Date();
@@ -348,10 +349,37 @@ watch(
   }
 );
 
-// Submit com validação automática do UForm
 async function onSubmit() {
-  // Se passou pela validação do UForm, podemos adicionar
+  // capture o item selecionado e a qty ANTES de resetar no addFood()
+  const selectedId = foodState.id;
+  const qty = foodState.quantity;
+  // se os ids no banco forem números, garanta coerção:
+  const added = foodStore.foodDatabase.find(
+    (f) => String(f.id) === String(selectedId)
+  );
+
   addFood();
+
+  toast.add({
+    title: "Item added",
+    description: added ? `${added.label} x ${qty}` : `Quantity: ${qty}`,
+    icon: "i-lucide-check",
+    color: "success",
+  });
+}
+function onFormError(e) {
+  // payload do UForm: pegue a primeira mensagem disponível
+  const msg =
+    e?.errors?.[0]?.message ||
+    e?.message ||
+    "Please fix the highlighted errors and try again.";
+
+  toast.add({
+    title: "Validation failed",
+    description: msg,
+    icon: "i-lucide-alert-triangle",
+    color: "error",
+  });
 }
 
 function addFood() {
@@ -374,7 +402,16 @@ function addFood() {
 }
 
 function deleteFood(id) {
+  const removed = tableData.value.find((r) => (r.id ?? r.foodId) === id);
   foodStore.deleteLog(id);
   tableKey.value += 1;
+
+  // 🔔 Toast de sucesso (delete)
+  toast.add({
+    title: "Item removed",
+    description: removed ? `${removed.label} × ${removed.quantity}` : undefined,
+    icon: "i-lucide-trash-2",
+    color: "error",
+  });
 }
 </script>
