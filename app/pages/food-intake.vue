@@ -162,8 +162,8 @@
                       class="cursor-pointer"
                       icon="i-heroicons-trash"
                       size="sm"
-                      color="red"
-                      variant="ghost"
+                      color="neutral"
+                      variant="subtle"
                       @click="
                         askDelete({
                           id: row.original?.id ?? row.original?.foodId,
@@ -211,8 +211,8 @@
                       aria-label="Delete entry"
                       icon="i-heroicons-trash"
                       size="sm"
-                      color="red"
-                      variant="ghost"
+                      color="neutral"
+                      variant="subtle"
                       class="cursor-pointer"
                       @click="askDelete(item)"
                     />
