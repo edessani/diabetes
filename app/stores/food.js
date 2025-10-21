@@ -1,5 +1,6 @@
 // stores/food.js
 import { defineStore } from "pinia";
+import { ref } from "vue"; // Import ref from 'vue', not 'pinia'
 
 export const useFoodStore = defineStore(
   "food",
@@ -28,8 +29,8 @@ export const useFoodStore = defineStore(
         id: 3,
         label: "Chicken Breast (cooked)",
         unit: "g",
-        calories: 0.248,
-        protein: 0.465,
+        calories: 248,
+        protein: 46.5,
         carbs: 0,
         defaultQuantity: 150,
       },
@@ -55,8 +56,8 @@ export const useFoodStore = defineStore(
         id: 6,
         label: "Salmon",
         unit: "g",
-        calories: 0.208,
-        protein: 0.2,
+        calories: 208,
+        protein: 20,
         carbs: 0,
         defaultQuantity: 100,
       },
@@ -130,7 +131,7 @@ export const useFoodStore = defineStore(
         calories: 138,
         protein: 7,
         carbs: 24,
-        defaultQuantity: 1,
+        defaultQuantity: 2,
       },
       {
         id: 15,
@@ -143,21 +144,17 @@ export const useFoodStore = defineStore(
       },
     ];
 
-    // Logs persistidos
-    const logs = [];
+    // Logs persistidos com ref para reatividade
+    const logs = ref([]);
 
-    // Persistência automática no localStorage
-    const $persist = true;
-
-    // Computed para exibir apenas os logs da data selecionada
+    // Função para filtrar logs por data
     function logsForDate(dateIso) {
-      return logs
+      return logs.value
         .filter((l) => l.date === dateIso)
         .map((log) => {
           const food = foodDatabase.find((f) => f.id === log.foodId) || {};
           return {
             id: log.id,
-            mealType: log.mealType,
             date: log.date,
             label: food.label || "",
             quantity: log.quantity,
@@ -169,24 +166,26 @@ export const useFoodStore = defineStore(
         });
     }
 
-    // Ações
+    // Ações com reatividade
     function addLog(log) {
-      logs.push({ ...log, id: Date.now() });
+      logs.value = [...logs.value, { ...log, id: Date.now() }];
     }
 
     function updateLog(id, data) {
-      const idx = logs.findIndex((l) => l.id === id);
+      const idx = logs.value.findIndex((l) => l.id === id);
       if (idx > -1) {
-        logs[idx] = { ...logs[idx], ...data };
+        logs.value = logs.value.map((l, i) =>
+          i === idx ? { ...l, ...data } : l
+        );
       }
     }
 
     function deleteLog(id) {
-      logs.length = logs.filter((l) => l.id !== id).length;
+      logs.value = logs.value.filter((l) => l.id !== id);
     }
 
     function clearAll() {
-      logs.length = 0;
+      logs.value = [];
     }
 
     return {
@@ -197,10 +196,13 @@ export const useFoodStore = defineStore(
       updateLog,
       deleteLog,
       clearAll,
-      $persist,
     };
   },
   {
-    persist: true,
+    persist: process.client
+      ? {
+          storage: localStorage,
+        }
+      : false,
   }
 );

@@ -113,6 +113,7 @@
             <div class="col-span-1 flex items-center">
               <UFormField class="w-full" label="Action">
                 <UButton
+                  block
                   icon="i-lucide-plus"
                   color="neutral"
                   variant="subtle"
@@ -125,29 +126,37 @@
           </UForm>
         </UCard>
 
-        <!-- Food List -->
         <UCard class="mt-6">
           <template #header>
-            <h3 class="text-lg font-semibold">Selected Date Intake</h3>
+            <h3 class="text-lg font-semibold">Entries for selected Date</h3>
           </template>
-          <UTable :data="displayedFoods" :columns="columns" class="mt-4">
-            <template #actions-data="{ row }">
-              <UButton
-                icon="i-heroicons-pencil"
-                size="sm"
-                color="gray"
-                variant="ghost"
-                @click="editFood(row)"
-              />
-              <UButton
-                icon="i-heroicons-trash"
-                size="sm"
-                color="red"
-                variant="ghost"
-                @click="deleteFood(row.id)"
-              />
-            </template>
-          </UTable>
+          <ClientOnly>
+            <UTable
+              :data="tableData"
+              :columns="columns"
+              :key="tableKey"
+              class="mt-4 text-center"
+            >
+              <template #actions-cell="{ row }">
+                <div class="flex gap-2 justify-center">
+                  <!-- <UButton
+                  icon="i-heroicons-pencil"
+                  size="sm"
+                  color="gray"
+                  variant="ghost"
+                  @click="editFood(row)"
+                /> -->
+                  <UButton
+                    class="cursor-pointer"
+                    icon="i-heroicons-trash"
+                    size="sm"
+                    color="red"
+                    variant="ghost"
+                    @click="deleteFood(row.original.id ?? row.original.foodId)"
+                  />
+                </div>
+              </template> </UTable
+          ></ClientOnly>
         </UCard>
       </UPageBody>
     </UPage>
@@ -161,8 +170,8 @@ import {
   getLocalTimeZone,
 } from "@internationalized/date";
 import { useFoodStore } from "~/stores/food";
-import { watch, shallowRef, ref, computed } from "vue";
-
+import { watch, shallowRef, ref, computed, nextTick } from "vue";
+import { h } from "vue";
 const df = new DateFormatter("en-US", {
   dateStyle: "medium",
 });
@@ -184,25 +193,124 @@ const foodState = ref({
   carbs: 0,
 });
 
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const tableData = computed(() =>
+  foodStore.logsForDate(selectedDate.value.toString()).map((r) => ({
+    ...r,
+    calories: toNum(r.calories),
+    protein: toNum(r.protein),
+    carbs: toNum(r.carbs),
+  }))
+);
+const tableKey = ref(0); // Chave dinâmica para forçar atualização
 const displayedFoods = computed(() => {
   return foodStore.logsForDate(selectedDate.value.toString());
 });
 
 const columns = [
-  { accessorKey: "date", header: "Date" },
-  { accessorKey: "label", header: "Food" },
-  { accessorKey: "quantity", header: "Quantity" },
-  { accessorKey: "unit", header: "Unit" },
-  { accessorKey: "calories", header: "Calories" },
-  { accessorKey: "protein", header: "Protein (g)" },
-  { accessorKey: "carbs", header: "Carbs (g)" },
+  {
+    accessorKey: "date",
+    header: () => h("div", { class: "text-center" }, "Date"),
+  },
+  {
+    accessorKey: "label",
+    header: () => h("div", { class: "text-center" }, "Food"),
+  },
+  {
+    accessorKey: "quantity",
+    header: () => h("div", { class: "text-center" }, "Quantity"),
+  },
+  {
+    accessorKey: "unit",
+    header: () => h("div", { class: "text-center" }, "Unit"),
+  },
+  {
+    accessorKey: "calories",
+    header: () => h("div", { class: "text-center" }, "Calories"),
+    footer: ({ table }) => {
+      const total = table
+        .getRowModel()
+        .rows.reduce((acc, row) => acc + toNum(row.getValue("calories")), 0);
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "decimal",
+      }).format(total);
+      return h(
+        "div",
+        { class: "text-center font-medium" },
+        `Total: ${formatted}`
+      );
+    },
+    cell: ({ row }) => {
+      const amount = toNum(row.getValue("calories"));
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "decimal",
+      }).format(amount);
+      return h("div", { class: "text-center font-medium" }, formatted);
+    },
+  },
+  {
+    accessorKey: "protein",
+    header: () => h("div", { class: "text-center" }, "Protein"),
+    footer: ({ table }) => {
+      const total = table
+        .getRowModel()
+        .rows.reduce((acc, row) => acc + toNum(row.getValue("protein")), 0);
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "decimal",
+      }).format(total);
+      return h(
+        "div",
+        { class: "text-center font-medium" },
+        `Total: ${formatted}`
+      );
+    },
+    cell: ({ row }) => {
+      const amount = toNum(row.getValue("protein"));
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "decimal",
+      }).format(amount);
+      return h("div", { class: "text-center font-medium" }, formatted);
+    },
+  },
+  {
+    accessorKey: "carbs",
+    header: () => h("div", { class: "text-center" }, "Carbs (g)"),
+    footer: ({ table }) => {
+      const total = table
+        .getRowModel()
+        .rows.reduce((acc, row) => acc + toNum(row.getValue("carbs")), 0);
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "decimal",
+      }).format(total);
+      return h(
+        "div",
+        { class: "text-center font-medium" },
+        `Total: ${formatted}`
+      );
+    },
+    cell: ({ row }) => {
+      const amount = toNum(row.getValue("carbs"));
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "decimal",
+      }).format(amount);
+      return h("div", { class: "text-center font-medium" }, formatted);
+    },
+  },
+  {
+    id: "actions",
+    header: () => h("div", { class: "text-center" }, "Actions"),
+  },
 ];
 
 function updateFoodState(selectedFood) {
   foodState.value = {
     id: selectedFood.id,
     label: selectedFood.label,
-    quantity: selectedFood.quantity || 1,
+    quantity: 1,
     unit: selectedFood.unit,
     calories: selectedFood.calories,
     protein: selectedFood.protein,
@@ -221,8 +329,8 @@ function addFood() {
 
   foodStore.addLog(foodLog);
 
-  // Forçar reavaliação do computed
-  displayedFoods.value; // Isso força o Vue a recomputar o computed
+  // Forçar atualização da tabela e totais
+  tableKey.value += 1;
 
   // Reset form
   foodState.value = {
@@ -245,6 +353,8 @@ function editFood(row) {
 
 function deleteFood(id) {
   foodStore.deleteLog(id);
+  tableKey.value += 1;
+  console.log("Deleted food log with id:", id);
 }
 
 watch(
@@ -259,7 +369,7 @@ watch(
       foodState.value.calories = selectedFood.calories;
       foodState.value.protein = selectedFood.protein;
       foodState.value.carbs = selectedFood.carbs;
-      foodState.value.quantity = selectedFood.defaultQuantity || 1;
+      //   foodState.value.quantity = selectedFood.defaultQuantity || 1;
     }
   },
   { deep: true }
