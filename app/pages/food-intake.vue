@@ -14,6 +14,7 @@
               Choose the Entry Date
             </h3>
           </template>
+
           <UPopover>
             <UButton
               class="w-full"
@@ -38,6 +39,7 @@
             </template>
           </UPopover>
         </UCard>
+
         <UCard>
           <template #header>
             <h3 class="text-lg font-semibold col-span-1 lg:col-span-5">
@@ -45,19 +47,25 @@
             </h3>
           </template>
 
+          <!-- Form com validação -->
           <UForm
+            :schema="schema"
+            :state="foodState"
             class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-center mt-4"
+            @submit="onSubmit"
           >
             <div class="col-span-1 lg:col-span-2 flex items-center">
-              <UFormField class="w-full" label="Food">
+              <UFormField class="w-full" label="Food" name="id" required>
                 <USelectMenu
                   class="w-full"
                   placeholder="Search or enter food name..."
-                  v-model="foodState"
-                  :items="foodStore.foodDatabase"
+                  v-model="foodState.id"
+                  :items="foodOptions"
+                  value-key="value"
                 />
               </UFormField>
             </div>
+
             <div class="col-span-1 flex items-center">
               <UFormField class="w-full" label="Unit of Measure">
                 <UInput
@@ -68,8 +76,14 @@
                 />
               </UFormField>
             </div>
+
             <div class="col-span-1 flex items-center">
-              <UFormField class="w-full" label="Quantity">
+              <UFormField
+                class="w-full"
+                label="Quantity"
+                name="quantity"
+                required
+              >
                 <UInputNumber
                   v-model="foodState.quantity"
                   :min="1"
@@ -79,31 +93,31 @@
                 />
               </UFormField>
             </div>
+
             <div class="col-span-1 flex items-center">
               <UFormField class="w-full" label="Calories">
                 <UInput
                   :value="(foodState.calories || 0) * (foodState.quantity || 1)"
-                  placeholder="Total Calories"
                   class="w-full"
                   disabled
                 />
               </UFormField>
             </div>
+
             <div class="col-span-1 flex items-center">
               <UFormField class="w-full" label="Protein (g)">
                 <UInput
                   :value="(foodState.protein || 0) * (foodState.quantity || 1)"
-                  placeholder="Total Protein"
                   class="w-full"
                   disabled
                 />
               </UFormField>
             </div>
+
             <div class="col-span-1 flex items-center">
               <UFormField class="w-full" label="Carbs (g)">
                 <UInput
                   :value="(foodState.carbs || 0) * (foodState.quantity || 1)"
-                  placeholder="Total Carbs"
                   class="w-full"
                   disabled
                 />
@@ -114,13 +128,14 @@
               <UFormField class="w-full" label="Action">
                 <UButton
                   block
+                  type="submit"
                   icon="i-lucide-plus"
                   color="neutral"
                   variant="subtle"
                   class="w-full text-center cursor-pointer"
-                  @click="addFood"
-                  >Add</UButton
                 >
+                  Add
+                </UButton>
               </UFormField>
             </div>
           </UForm>
@@ -130,6 +145,7 @@
           <template #header>
             <h3 class="text-lg font-semibold">Entries for selected Date</h3>
           </template>
+
           <ClientOnly>
             <UTable
               :data="tableData"
@@ -139,13 +155,6 @@
             >
               <template #actions-cell="{ row }">
                 <div class="flex gap-2 justify-center">
-                  <!-- <UButton
-                  icon="i-heroicons-pencil"
-                  size="sm"
-                  color="gray"
-                  variant="ghost"
-                  @click="editFood(row)"
-                /> -->
                   <UButton
                     class="cursor-pointer"
                     icon="i-heroicons-trash"
@@ -155,8 +164,9 @@
                     @click="deleteFood(row.original.id ?? row.original.foodId)"
                   />
                 </div>
-              </template> </UTable
-          ></ClientOnly>
+              </template>
+            </UTable>
+          </ClientOnly>
         </UCard>
       </UPageBody>
     </UPage>
@@ -170,11 +180,11 @@ import {
   getLocalTimeZone,
 } from "@internationalized/date";
 import { useFoodStore } from "~/stores/food";
-import { watch, shallowRef, ref, computed, nextTick } from "vue";
+import { watch, shallowRef, ref, reactive, computed } from "vue";
 import { h } from "vue";
-const df = new DateFormatter("en-US", {
-  dateStyle: "medium",
-});
+import * as z from "zod"; // <- zod para schema (UI4 suporta Standard Schema) :contentReference[oaicite:4]{index=4}
+
+const df = new DateFormatter("en-US", { dateStyle: "medium" });
 
 const now = new Date();
 const selectedDate = shallowRef(
@@ -183,14 +193,33 @@ const selectedDate = shallowRef(
 
 const foodStore = useFoodStore();
 
-const foodState = ref({
-  id: null,
+// Opções para o SelectMenu (label/value)
+const foodOptions = computed(() =>
+  foodStore.foodDatabase.map((f) => ({ label: f.label, value: f.id }))
+); // :contentReference[oaicite:5]{index=5}
+
+const foodState = reactive({
+  id: undefined, // <- v-model do SelectMenu
   label: null,
   quantity: 1,
   unit: "",
   calories: 0,
   protein: 0,
   carbs: 0,
+});
+
+// Schema de validação
+const schema = z.object({
+  id: z
+    .union([z.string(), z.number()]) // aceita string ou number...
+    .nullable() // ...e também null...
+    .optional() // ...ou undefined
+    .refine((v) => v !== null && v !== undefined && String(v).length > 0, {
+      message: "Food is required",
+    }),
+  quantity: z.coerce
+    .number({ required_error: "Quantity is required" })
+    .min(1, { message: "Quantity is required and must be at least 1" }),
 });
 
 const toNum = (v) => {
@@ -206,10 +235,8 @@ const tableData = computed(() =>
     carbs: toNum(r.carbs),
   }))
 );
-const tableKey = ref(0); // Chave dinâmica para forçar atualização
-const displayedFoods = computed(() => {
-  return foodStore.logsForDate(selectedDate.value.toString());
-});
+
+const tableKey = ref(0);
 
 const columns = [
   {
@@ -306,72 +333,48 @@ const columns = [
   },
 ];
 
-function updateFoodState(selectedFood) {
-  foodState.value = {
-    id: selectedFood.id,
-    label: selectedFood.label,
-    quantity: 1,
-    unit: selectedFood.unit,
-    calories: selectedFood.calories,
-    protein: selectedFood.protein,
-    carbs: selectedFood.carbs,
-  };
+// Atualiza campos quando muda o id (Select)
+watch(
+  () => foodState.id,
+  (newId) => {
+    const selectedFood = foodStore.foodDatabase.find((f) => f.id === newId);
+    if (selectedFood) {
+      foodState.label = selectedFood.label;
+      foodState.unit = selectedFood.unit;
+      foodState.calories = selectedFood.calories;
+      foodState.protein = selectedFood.protein;
+      foodState.carbs = selectedFood.carbs;
+    }
+  }
+);
+
+// Submit com validação automática do UForm
+async function onSubmit() {
+  // Se passou pela validação do UForm, podemos adicionar
+  addFood();
 }
 
 function addFood() {
-  if (!foodState.value.id || foodState.value.quantity <= 0) return;
-
   const foodLog = {
     date: selectedDate.value.toString(),
-    foodId: foodState.value.id,
-    quantity: foodState.value.quantity,
+    foodId: foodState.id,
+    quantity: foodState.quantity,
   };
-
   foodStore.addLog(foodLog);
-
-  // Forçar atualização da tabela e totais
   tableKey.value += 1;
 
-  // Reset form
-  foodState.value = {
-    id: null,
-    label: null,
-    quantity: 1,
-    unit: "",
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-  };
-}
-
-function editFood(row) {
-  const selectedFood = foodStore.foodDatabase.find((f) => f.id === row.id);
-  if (selectedFood) {
-    updateFoodState(selectedFood);
-  }
+  // Reset
+  foodState.id = undefined;
+  foodState.label = null;
+  foodState.quantity = 1;
+  foodState.unit = "";
+  foodState.calories = 0;
+  foodState.protein = 0;
+  foodState.carbs = 0;
 }
 
 function deleteFood(id) {
   foodStore.deleteLog(id);
   tableKey.value += 1;
-  console.log("Deleted food log with id:", id);
 }
-
-watch(
-  () => foodState.value,
-  (newValue) => {
-    const selectedFood = foodStore.foodDatabase.find(
-      (f) => f.id === newValue.id
-    );
-    if (selectedFood) {
-      foodState.value.label = selectedFood.label;
-      foodState.value.unit = selectedFood.unit;
-      foodState.value.calories = selectedFood.calories;
-      foodState.value.protein = selectedFood.protein;
-      foodState.value.carbs = selectedFood.carbs;
-      //   foodState.value.quantity = selectedFood.defaultQuantity || 1;
-    }
-  },
-  { deep: true }
-);
 </script>
