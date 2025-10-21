@@ -34,7 +34,7 @@ const items = computed<NavigationMenuItem[]>(() => [
         <Logo class="h-6 w-auto" />
       </template>
 
-      <UNavigationMenu :items="items" />
+      <UNavigationMenu color="neutral" :items="items" />
 
       <template #right>
         <UColorModeButton />
@@ -53,6 +53,7 @@ const items = computed<NavigationMenuItem[]>(() => [
 
       <template #body>
         <UNavigationMenu
+          color="neutral"
           :items="items"
           orientation="vertical"
           class="-mx-2.5"

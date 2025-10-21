@@ -148,25 +148,154 @@
           </template>
 
           <ClientOnly>
-            <UTable
-              :data="tableData"
-              :columns="columns"
-              :key="tableKey"
-              class="mt-4 text-center"
-            >
-              <template #actions-cell="{ row }">
-                <div class="flex gap-2 justify-center">
-                  <UButton
-                    class="cursor-pointer"
-                    icon="i-heroicons-trash"
-                    size="sm"
-                    color="red"
-                    variant="ghost"
-                    @click="deleteFood(row.original.id ?? row.original.foodId)"
-                  />
+            <!-- DESKTOP: tabela normal -->
+            <div class="hidden md:block">
+              <UTable
+                :data="tableData"
+                :columns="columns"
+                :key="tableKey"
+                class="mt-4 text-center"
+              >
+                <template #actions-cell="{ row }">
+                  <div class="flex gap-2 justify-center">
+                    <UButton
+                      class="cursor-pointer"
+                      icon="i-heroicons-trash"
+                      size="sm"
+                      color="red"
+                      variant="ghost"
+                      @click="
+                        askDelete({
+                          id: row.original?.id ?? row.original?.foodId,
+                          label: row.getValue('label'),
+                          quantity: row.getValue('quantity'),
+                          date: row.getValue('date'),
+                        })
+                      "
+                    />
+                  </div>
+                </template>
+              </UTable>
+            </div>
+
+            <!-- NEW (mobile): cards no lugar de tabela -->
+            <div class="md:hidden mt-4 space-y-3">
+              <UCard
+                v-for="item in tableData"
+                :key="item.id ?? item.foodId"
+                class="p-3"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="space-y-1">
+                    <div class="text-sm text-muted-foreground">
+                      {{ item.date }}
+                    </div>
+                    <div class="font-medium">{{ item.label }}</div>
+
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      <div class="text-muted-foreground">Qty:</div>
+                      <div>{{ item.quantity }}</div>
+                      <div class="text-muted-foreground">Unit:</div>
+                      <div>{{ item.unit }}</div>
+                      <div class="text-muted-foreground bo">Calories:</div>
+                      <div class="font-medium">{{ fmt(item.calories) }}</div>
+                      <div class="text-muted-foreground">Protein:</div>
+                      <div class="font-medium">{{ fmt(item.protein) }}</div>
+                      <div class="text-muted-foreground">Carbs:</div>
+                      <div class="font-medium">{{ fmt(item.carbs) }}</div>
+                    </div>
+                  </div>
+
+                  <div class="shrink-0">
+                    <UButton
+                      aria-label="Delete entry"
+                      icon="i-heroicons-trash"
+                      size="sm"
+                      color="red"
+                      variant="ghost"
+                      class="cursor-pointer"
+                      @click="askDelete(item)"
+                    />
+                  </div>
                 </div>
+              </UCard>
+
+              <!-- NEW (mobile): totais -->
+              <UCard class="p-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm text-muted-foreground">Totals</div>
+                </div>
+                <div class="mt-2 grid grid-cols-3 text-center">
+                  <div>
+                    <div class="text-xs text-muted-foreground">Calories</div>
+                    <div class="font-medium">{{ fmt(totals.calories) }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs text-muted-foreground">Protein</div>
+                    <div class="font-medium">{{ fmt(totals.protein) }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs text-muted-foreground">Carbs</div>
+                    <div class="font-medium">{{ fmt(totals.carbs) }}</div>
+                  </div>
+                </div>
+              </UCard>
+            </div>
+
+            <UModal
+              v-model:open="confirmOpen"
+              :dismissible="false"
+              title="Delete entry?"
+              description="Confirm deletion of the selected entry."
+              :close="false"
+              :ui="{ footer: 'justify-end' }"
+            >
+              <template #body>
+                <!-- <div class="p-0"> -->
+                <p>You're about to delete:</p>
+                <ul class="list-disc pl-10 text-sm">
+                  <li>
+                    <span class="font-medium">Date:</span>
+                    {{ pendingItem?.date }}
+                  </li>
+                  <li>
+                    <span class="font-medium">Food:</span>
+                    {{ pendingItem?.label }}
+                  </li>
+                  <li>
+                    <span class="font-medium">Quantity:</span>
+                    {{ pendingItem?.quantity }}
+                  </li>
+                </ul>
+                <p class="text-sm text-muted-foreground text-error-300 mt-2">
+                  This action cannot be undone.
+                </p>
+                <!-- </div> -->
               </template>
-            </UTable>
+
+              <template #footer>
+                <!-- <div class="flex justify-end gap-2 p-3"> -->
+                <UButton
+                  class="cursor-pointer"
+                  color="neutral"
+                  variant="subtle"
+                  icon="i-lucide-x"
+                  @click="confirmOpen = false"
+                >
+                  Cancel
+                </UButton>
+                <UButton
+                  class="cursor-pointer"
+                  variant="subtle"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  @click="confirmDelete"
+                >
+                  Delete
+                </UButton>
+                <!-- </div> -->
+              </template>
+            </UModal>
           </ClientOnly>
         </UCard>
       </UPageBody>
@@ -348,6 +477,54 @@ watch(
     }
   }
 );
+
+// Funcoes
+
+// NEW: helper para formatar número no mobile
+function fmt(v) {
+  return new Intl.NumberFormat("en-US", { style: "decimal" }).format(
+    Number(v) || 0
+  );
+}
+
+// NEW: totais reativos (reusa tableData)
+const totals = computed(() => {
+  return tableData.value.reduce(
+    (acc, r) => {
+      acc.calories += Number(r.calories) || 0;
+      acc.protein += Number(r.protein) || 0;
+      acc.carbs += Number(r.carbs) || 0;
+      return acc;
+    },
+    { calories: 0, protein: 0, carbs: 0 }
+  );
+});
+
+// Modal state (JS puro, sem types)
+const confirmOpen = ref(false);
+const pendingItem = ref(null); // vai receber row.original
+
+function askDelete(item) {
+  // item vem de row.original da tabela
+  pendingItem.value = item;
+  confirmOpen.value = true;
+}
+
+function confirmDelete() {
+  const id =
+    pendingItem.value && (pendingItem.value.id ?? pendingItem.value.foodId);
+  if (id == null) {
+    confirmOpen.value = false;
+    return;
+  }
+
+  // Reutiliza sua lógica existente (que já mostra o toast de remoção)
+  deleteFood(id);
+
+  // Fecha e limpa
+  confirmOpen.value = false;
+  pendingItem.value = null;
+}
 
 async function onSubmit() {
   // capture o item selecionado e a qty ANTES de resetar no addFood()
