@@ -57,6 +57,7 @@
                 v-model="form.datetimeIso"
                 type="datetime-local"
                 class="w-full"
+                color="neutral"
               />
             </UFormField>
 
@@ -88,6 +89,7 @@
                 value-key="value"
                 class="w-full"
                 placeholder="Select..."
+                color="neutral"
               />
             </UFormField>
 
@@ -97,6 +99,7 @@
                 class="w-full"
                 placeholder="Any notes..."
                 :rows="2"
+                color="neutral"
               />
             </UFormField>
 
@@ -114,8 +117,7 @@
           </UForm>
         </UCard>
 
-        <!-- Daily Table -->
-
+        <!-- Readings / Summary -->
         <UCard class="mt-6">
           <template #header>
             <ClientOnly>
@@ -123,10 +125,83 @@
                 <h3 class="text-sm md:text-lg font-semibold">
                   Readings for selected day
                 </h3>
-                <div class="text-sm text-muted-foreground">
-                  Avg: <span class="font-medium">{{ dailyAvg }}</span> mg/dL
+
+                <!-- Avg com badge colorido por faixa -->
+                <div
+                  class="text-sm text-muted-foreground flex items-center gap-2"
+                >
+                  <span>Avg:</span>
+                  <UBadge
+                    :color="statusColor(avgStatus)"
+                    variant="subtle"
+                    class="font-medium"
+                  >
+                    {{ dailyAvg }} mg/dL
+                  </UBadge>
                   <span class="mx-2">•</span>
-                  Count: <span class="font-medium">{{ dayRows.length }}</span>
+                  <span
+                    >Count:
+                    <span class="font-medium">{{ dayRows.length }}</span></span
+                  >
+                </div>
+              </div>
+
+              <!-- DESKTOP: sparkline com banda de alvo e linha do Avg -->
+              <div
+                v-if="spark.points.length"
+                class="hidden md:flex flex-col mt-3"
+              >
+                <div
+                  class="flex items-center justify-between text-xs text-muted-foreground mb-1"
+                >
+                  <span>Min: {{ spark.min }}</span>
+                  <span>Target: {{ TARGET_MIN }}–{{ TARGET_MAX }} mg/dL</span>
+                  <span>Max: {{ spark.max }}</span>
+                </div>
+                <div class="rounded-lg ring ring-default bg-default/50 p-2">
+                  <svg
+                    :viewBox="`0 0 ${spark.w} ${spark.h}`"
+                    :width="spark.w"
+                    :height="spark.h"
+                    class="w-full h-20"
+                  >
+                    <!-- faixa alvo -->
+                    <rect
+                      :x="0"
+                      :y="spark.band.top"
+                      :width="spark.w"
+                      :height="spark.band.height"
+                      fill="currentColor"
+                      class="opacity-10"
+                    />
+                    <!-- baseline -->
+                    <line
+                      :x1="0"
+                      :y1="spark.h - 1"
+                      :x2="spark.w"
+                      :y2="spark.h - 1"
+                      stroke="currentColor"
+                      class="opacity-20"
+                    />
+                    <!-- série -->
+                    <polyline
+                      :points="spark.points"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    />
+                    <!-- linha do Avg -->
+                    <line
+                      :x1="0"
+                      :x2="spark.w"
+                      :y1="spark.avgY"
+                      :y2="spark.avgY"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-dasharray="4 3"
+                      class="opacity-70"
+                    />
+                  </svg>
                 </div>
               </div>
             </ClientOnly>
@@ -185,9 +260,13 @@
 
             <!-- MOBILE: cards no lugar de tabela -->
             <div class="md:hidden mt-4 space-y-3">
+              <!-- Resumo + sparkline com banda de alvo e linha do Avg -->
               <UCard class="p-3">
                 <div class="flex items-center justify-between">
                   <div class="text-sm text-muted-foreground">Summary</div>
+                  <UBadge :color="statusColor(avgStatus)" variant="subtle">
+                    Avg: {{ dailyAvg }} mg/dL
+                  </UBadge>
                 </div>
                 <div class="mt-2 grid grid-cols-2 text-center">
                   <div>
@@ -199,8 +278,58 @@
                     <div class="font-medium">{{ dayRows.length }}</div>
                   </div>
                 </div>
+
+                <div
+                  v-if="spark.points.length"
+                  class="mt-3 rounded-lg ring ring-default bg-default/50 p-2"
+                >
+                  <svg
+                    :viewBox="`0 0 ${spark.w} ${spark.h}`"
+                    :width="spark.w"
+                    :height="spark.h"
+                    class="w-full h-16"
+                  >
+                    <!-- faixa alvo -->
+                    <rect
+                      :x="0"
+                      :y="spark.band.top"
+                      :width="spark.w"
+                      :height="spark.band.height"
+                      fill="currentColor"
+                      class="opacity-10"
+                    />
+                    <!-- baseline -->
+                    <line
+                      :x1="0"
+                      :y1="spark.h - 1"
+                      :x2="spark.w"
+                      :y2="spark.h - 1"
+                      stroke="currentColor"
+                      class="opacity-20"
+                    />
+                    <!-- série -->
+                    <polyline
+                      :points="spark.points"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    />
+                    <!-- linha do Avg -->
+                    <line
+                      :x1="0"
+                      :x2="spark.w"
+                      :y1="spark.avgY"
+                      :y2="spark.avgY"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-dasharray="4 3"
+                      class="opacity-70"
+                    />
+                  </svg>
+                </div>
               </UCard>
 
+              <!-- Cards por leitura -->
               <UCard v-for="item in tableData" :key="item.id" class="p-3">
                 <div class="flex items-start justify-between gap-3">
                   <div class="space-y-1">
@@ -228,10 +357,7 @@
                       <div>
                         <template v-if="item.notes">
                           <UTooltip :text="item.notes">
-                            <span
-                              class="truncate max-w-[220px] underline decoration-dotted"
-                            >
-                              <!-- {{ item.notes }} -->
+                            <span class="underline decoration-dotted">
                               <UButton
                                 variant="ghost"
                                 color="neutral"
@@ -261,11 +387,9 @@
                   </div>
                 </div>
               </UCard>
-
-              <!-- Resumo (mobile) -->
             </div>
 
-            <!-- Confirm delete modal (mantido) -->
+            <!-- Confirm delete modal -->
             <UModal
               v-model:open="confirmOpen"
               :dismissible="false"
@@ -333,7 +457,11 @@ import {
 import * as z from "zod";
 const toast = useToast();
 
-/* Date picker state (same pattern as food-intake) */
+/* Target band (padrão comum: 70–180 mg/dL) */
+const TARGET_MIN = 70;
+const TARGET_MAX = 180;
+
+/* Date picker state */
 const df = new DateFormatter("en-US", { dateStyle: "medium" });
 const now = new Date();
 const viewDate = shallowRef(
@@ -385,16 +513,90 @@ function formatDateTime(isoLike) {
   const d = new Date(isoLike);
   return d.toLocaleString();
 }
+function bandStatusByValue(v) {
+  if (v < TARGET_MIN) return "low";
+  if (v > TARGET_MAX) return "high";
+  return "in";
+}
 
 /* Table data */
 const dayRows = computed(() => g.logsForDate(viewDate.value.toString()));
 const dailyAvg = computed(() => g.avgForDate(viewDate.value.toString()));
+const avgStatus = computed(() =>
+  bandStatusByValue(Number(dailyAvg.value || 0))
+);
+
 const tableData = computed(() =>
   dayRows.value.map((r) => ({
     ...r,
-    _status: g.statusFor(Number(r.value), r.context),
+    _status: g.statusFor(Number(r.value), r.context), // mantém sua regra por contexto para cada leitura
   }))
 );
+
+/* Sparkline (ordenado por horário) + banda alvo + linha do Avg */
+const spark = computed(() => {
+  const w = 320;
+  const h = 80;
+  const topPad = 4;
+  const bottomPad = 4;
+  const rows = [...dayRows.value].sort(
+    (a, b) => new Date(a.datetimeIso) - new Date(b.datetimeIso)
+  );
+  if (!rows.length)
+    return {
+      w,
+      h,
+      min: 0,
+      max: 0,
+      points: "",
+      band: { top: 0, height: 0 },
+      avgY: 0,
+    };
+
+  const vals = rows.map((r) => Number(r.value));
+  let min = Math.min(...vals, TARGET_MIN);
+  let max = Math.max(...vals, TARGET_MAX);
+  if (min === max) {
+    min = min - 1;
+    max = max + 1;
+  }
+
+  const chartH = h - topPad - bottomPad;
+  const mapY = (v) => {
+    const t = (v - min) / (max - min);
+    return Math.round((1 - t) * chartH + topPad);
+  };
+
+  const xStep = rows.length > 1 ? w / (rows.length - 1) : w;
+  const points = rows
+    .map((r, i) => {
+      const v = Number(r.value);
+      const x = rows.length > 1 ? Math.round(i * xStep) : w;
+      const y = mapY(v);
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  // banda de alvo
+  const topY = mapY(TARGET_MAX);
+  const botY = mapY(TARGET_MIN);
+  const bandTop = Math.min(topY, botY);
+  const bandHeight = Math.abs(botY - topY);
+
+  // linha do Avg
+  const avg = Number(dailyAvg.value || 0);
+  const avgY = mapY(avg);
+
+  return {
+    w,
+    h,
+    min: Math.round(min),
+    max: Math.round(max),
+    points,
+    band: { top: bandTop, height: bandHeight },
+    avgY,
+  };
+});
 
 /* Columns (desktop) */
 const columns = [
@@ -417,7 +619,6 @@ const columns = [
 /* Delete modal */
 const confirmOpen = ref(false);
 const pendingItem = ref(null);
-
 function askDelete(item) {
   pendingItem.value = item;
   confirmOpen.value = true;
