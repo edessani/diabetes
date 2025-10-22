@@ -2,6 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
+  // plugins: [{ src: "~/plugins/apexcharts.client.ts", mode: "client" }],
   modules: [
     "@nuxt/image",
     "@nuxt/ui",
