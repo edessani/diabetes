@@ -57,6 +57,7 @@
                 v-model="form.datetimeIso"
                 type="datetime-local"
                 class="w-full"
+                variant="subtle"
                 color="neutral"
               />
             </UFormField>
@@ -73,6 +74,7 @@
                 :max="600"
                 placeholder="e.g. 110"
                 class="w-full"
+                variant="subtle"
                 color="neutral"
               />
             </UFormField>
@@ -89,6 +91,7 @@
                 value-key="value"
                 class="w-full"
                 placeholder="Select..."
+                variant="subtle"
                 color="neutral"
               />
             </UFormField>
@@ -99,6 +102,7 @@
                 class="w-full"
                 placeholder="Any notes..."
                 :rows="2"
+                variant="subtle"
                 color="neutral"
               />
             </UFormField>
@@ -122,7 +126,7 @@
           <template #header>
             <ClientOnly>
               <div class="flex items-center justify-between">
-                <h3 class="text-sm md:text-lg font-semibold">
+                <h3 class="text-xs sm:text-base md:text-lg font-semibold">
                   Readings for selected day
                 </h3>
 
@@ -356,18 +360,24 @@
                       <div class="text-muted-foreground">Notes:</div>
                       <div>
                         <template v-if="item.notes">
-                          <UTooltip :text="item.notes">
-                            <span class="underline decoration-dotted">
-                              <UButton
-                                variant="ghost"
-                                color="neutral"
-                                size="xs"
-                                icon="i-lucide-message-square-text"
-                                class="cursor-pointer"
-                                aria-label="View notes"
-                              />
-                            </span>
-                          </UTooltip>
+                          <UPopover
+                            mode="click"
+                            :ui="{ content: 'max-w-[260px] p-2 text-sm' }"
+                          >
+                            <UButton
+                              variant="subtle"
+                              color="neutral"
+                              size="xs"
+                              icon="i-lucide-message-square-text"
+                              class="cursor-pointer"
+                              aria-label="View notes"
+                            />
+                            <template #content>
+                              <p class="whitespace-pre-wrap">
+                                {{ item.notes }}
+                              </p>
+                            </template>
+                          </UPopover>
                         </template>
                         <span v-else class="opacity-40">—</span>
                       </div>

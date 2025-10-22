@@ -7,7 +7,7 @@
       />
 
       <UPageBody>
-        <!-- Date Selection -->
+        <!-- Date filter (igual ao pattern anterior) -->
         <UCard>
           <template #header>
             <h3 class="text-lg font-semibold">Choose the Day to View</h3>
@@ -22,6 +22,7 @@
             >
               {{ df.format(viewDate.toDate(getLocalTimeZone())) }}
             </UButton>
+
             <template #content>
               <UCalendar
                 size="xl"
@@ -33,7 +34,45 @@
           </UPopover>
         </UCard>
 
-        <!-- Add Medication -->
+        <!-- Buckets + Quick picks -->
+        <UCard class="mt-6">
+          <template #header>
+            <h3 class="text-lg font-semibold">Quick buckets</h3>
+          </template>
+
+          <!-- Buckets (chips) -->
+          <div class="flex flex-wrap gap-2">
+            <UButton
+              v-for="b in buckets"
+              :key="b.key"
+              size="sm"
+              :variant="activeBucket === b.key ? 'solid' : 'subtle'"
+              color="neutral"
+              @click="activeBucket = b.key"
+            >
+              {{ b.label }}
+            </UButton>
+          </div>
+
+          <!-- Quick-pick (chips dos presets do bucket) -->
+          <template #footer>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <UButton
+                v-for="p in bucketPresets"
+                :key="p.id"
+                size="sm"
+                variant="subtle"
+                color="neutral"
+                @click="applyPreset(p)"
+                :title="`${p.class} • ${p.route}`"
+              >
+                {{ p.label }}
+              </UButton>
+            </div></template
+          >
+        </UCard>
+
+        <!-- Form -->
         <UCard class="mt-6">
           <template #header>
             <h3 class="text-lg font-semibold">Add Medication</h3>
@@ -42,10 +81,11 @@
           <UForm
             :schema="schema"
             :state="form"
-            class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start"
+            class="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start"
             @submit="onSubmit"
             @error="onFormError"
           >
+            <!-- Date & time -->
             <UFormField
               class="w-full"
               label="Date & Time"
@@ -56,59 +96,69 @@
                 v-model="form.datetimeIso"
                 type="datetime-local"
                 class="w-full"
+                color="neutral"
+                variant="subtle"
               />
             </UFormField>
 
-            <UFormField
-              class="w-full"
-              label="Medication name"
-              name="name"
-              required
-            >
-              <UInput
-                v-model="form.name"
-                placeholder="e.g. Metformin, Lantus…"
-              />
-            </UFormField>
-
-            <UFormField class="w-full" label="Type" name="type">
-              <USelect
-                v-model="form.type"
-                :items="med.types"
+            <!-- Medication (filtrado pelo bucket) -->
+            <UFormField class="w-full" label="Medication" name="medId" required>
+              <USelectMenu
+                v-model="form.medId"
+                :items="selectItems"
                 value-key="value"
+                placeholder="Select a medication..."
+                class="w-full"
+                color="neutral"
+                variant="subtle"
               />
             </UFormField>
 
-            <div class="grid grid-cols-2 gap-4 lg:col-span-1">
-              <UFormField label="Dose" name="dose" required>
-                <UInputNumber v-model="form.dose" :min="0.1" :step="0.1" />
-              </UFormField>
-              <UFormField label="Unit" name="unit" required>
-                <USelect
-                  v-model="form.unit"
-                  :items="med.units"
-                  value-key="value"
-                />
-              </UFormField>
-            </div>
+            <!-- Dose -->
+            <UFormField class="w-full" label="Dose" name="dose" required>
+              <UInputNumber
+                v-model="form.dose"
+                :min="0"
+                class="w-full"
+                color="neutral"
+                variant="subtle"
+              />
+            </UFormField>
 
-            <UFormField class="w-full" label="Route" name="route">
+            <!-- Unit (auto do preset, mas editável) -->
+            <UFormField class="w-full" label="Unit" name="unit" required>
+              <UInput
+                v-model="form.unit"
+                class="w-full"
+                color="neutral"
+                variant="subtle"
+              />
+            </UFormField>
+
+            <!-- Route (auto do preset, mas editável) -->
+            <UFormField class="w-full" label="Route" name="route" required>
               <USelect
                 v-model="form.route"
-                :items="med.routes"
+                :items="routeItems"
                 value-key="value"
+                class="w-full"
+                color="neutral"
+                variant="subtle"
               />
             </UFormField>
 
-            <UFormField class="w-full lg:col-span-4" label="Notes (optional)">
+            <!-- Notes -->
+            <UFormField class="w-full lg:col-span-5" label="Notes (optional)">
               <UTextarea
                 v-model="form.notes"
                 :rows="2"
-                placeholder="Any notes…"
+                class="w-full"
+                color="neutral"
+                variant="subtle"
               />
             </UFormField>
 
-            <div class="lg:col-span-4 flex justify-end">
+            <div class="lg:col-span-5 flex justify-end">
               <UButton
                 type="submit"
                 color="neutral"
@@ -122,7 +172,7 @@
           </UForm>
         </UCard>
 
-        <!-- Daily table / mobile cards -->
+        <!-- Listagem do dia (desktop tabela + mobile cards, como as outras telas) -->
         <UCard class="mt-6">
           <template #header>
             <ClientOnly>
@@ -138,20 +188,9 @@
           </template>
 
           <ClientOnly>
-            <!-- DESKTOP -->
+            <!-- Desktop -->
             <div class="hidden md:block">
-              <UTable
-                :data="tableData"
-                :columns="columns"
-                class="mt-4 text-center"
-              >
-                <!-- dose cell -->
-                <template #dose-cell="{ row }">
-                  <span class="font-medium">{{ row.original.dose }}</span>
-                  <span class="opacity-70 ml-1">{{ row.original.unit }}</span>
-                </template>
-
-                <!-- notes tooltip -->
+              <UTable :data="tableData" :columns="columns" class="mt-4">
                 <template #notes-cell="{ row }">
                   <div class="flex items-center justify-center">
                     <UTooltip
@@ -159,7 +198,7 @@
                       :text="row.original.notes"
                     >
                       <UButton
-                        variant="ghost"
+                        variant="subtle"
                         color="neutral"
                         size="xs"
                         icon="i-lucide-message-square-text"
@@ -171,7 +210,6 @@
                   </div>
                 </template>
 
-                <!-- actions -->
                 <template #actions-cell="{ row }">
                   <div class="flex gap-2 justify-center">
                     <UButton
@@ -187,7 +225,7 @@
               </UTable>
             </div>
 
-            <!-- MOBILE -->
+            <!-- Mobile: cards -->
             <div class="md:hidden mt-4 space-y-3">
               <UCard v-for="item in tableData" :key="item.id" class="p-3">
                 <div class="flex items-start justify-between gap-3">
@@ -195,39 +233,42 @@
                     <div class="text-sm text-muted-foreground">
                       {{ formatDateTime(item.datetimeIso) }}
                     </div>
-
-                    <div class="font-medium">{{ item.name }}</div>
+                    <div class="font-medium">{{ item.medLabel }}</div>
 
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      <div class="text-muted-foreground">Type:</div>
-                      <div>{{ typeLabel(item.type) }}</div>
-
                       <div class="text-muted-foreground">Dose:</div>
                       <div class="font-medium">
-                        {{ item.dose }}
-                        <span class="opacity-70">{{ item.unit }}</span>
+                        {{ item.dose }} {{ item.unit }}
                       </div>
 
                       <div class="text-muted-foreground">Route:</div>
-                      <div>{{ routeLabel(item.route) }}</div>
+                      <div>{{ item.route }}</div>
+
+                      <div class="text-muted-foreground">Class:</div>
+                      <div>
+                        <UBadge color="neutral" variant="subtle">
+                          {{ item.class }}
+                        </UBadge>
+                      </div>
 
                       <div class="text-muted-foreground">Notes:</div>
                       <div>
                         <template v-if="item.notes">
-                          <UTooltip :text="item.notes">
-                            <span
-                              class="truncate max-w-[220px] underline decoration-dotted"
-                            >
-                              <UButton
-                                variant="ghost"
-                                color="neutral"
-                                size="xs"
-                                icon="i-lucide-message-square-text"
-                                class="cursor-pointer"
-                                aria-label="View notes"
-                              />
-                            </span>
-                          </UTooltip>
+                          <UPopover :popper="{ placement: 'top' }">
+                            <UButton
+                              variant="subtle"
+                              color="neutral"
+                              size="xs"
+                              icon="i-lucide-message-square-text"
+                              class="cursor-pointer"
+                              aria-label="View notes"
+                            />
+                            <template #content>
+                              <div class="max-w-[260px] text-sm p-2">
+                                {{ item.notes }}
+                              </div>
+                            </template>
+                          </UPopover>
                         </template>
                         <span v-else class="opacity-40">—</span>
                       </div>
@@ -254,7 +295,7 @@
               v-model:open="confirmOpen"
               :dismissible="false"
               title="Delete medication?"
-              description="Confirm deletion of the selected entry."
+              description="Confirm deletion of the selected record."
               :close="false"
               :ui="{ footer: 'justify-end' }"
             >
@@ -267,7 +308,7 @@
                   </li>
                   <li>
                     <span class="font-medium">Medication:</span>
-                    {{ pendingItem?.name }}
+                    {{ pendingItem?.medLabel }}
                   </li>
                   <li>
                     <span class="font-medium">Dose:</span>
@@ -317,134 +358,149 @@ import {
 import * as z from "zod";
 const toast = useToast();
 
-/* Date picker (mesmo pattern dos outros) */
+// date
 const df = new DateFormatter("en-US", { dateStyle: "medium" });
 const now = new Date();
 const viewDate = shallowRef(
   new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate())
 );
 
-/* Store */
-const med = useMedicationStore();
+// store
+const m = useMedicationStore();
 
-/* Helpers para labels */
-const typeLabel = (v) => med.types.find((t) => t.value === v)?.label || v;
-const routeLabel = (v) => med.routes.find((r) => r.value === v)?.label || v;
+// buckets state
+const buckets = m.buckets;
+const activeBucket = ref("all");
+const bucketPresets = computed(() => m.presetsByBucket(activeBucket.value));
 
-/* Form */
+// select items (filtrados por bucket)
+const selectItems = computed(() =>
+  bucketPresets.value.map((p) => ({ label: p.label, value: p.id }))
+);
+
+// route options
+const routeItems = [
+  { label: "Oral", value: "oral" },
+  { label: "Subcutaneous", value: "subcutaneous" },
+  { label: "Intravenous", value: "intravenous" },
+];
+
+// helpers
 const pad2 = (n) => String(n).padStart(2, "0");
 const toLocalDatetimeInput = (d = new Date()) =>
   `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(
     d.getHours()
   )}:${pad2(d.getMinutes())}`;
 
-const form = reactive({
-  datetimeIso: toLocalDatetimeInput(new Date()),
-  name: "",
-  type: "other",
-  dose: 1,
-  unit: "mg",
-  route: "oral",
-  notes: "",
-});
-
-/* Validation (Zod) */
-const schema = z.object({
-  datetimeIso: z.string().min(1, { message: "Date & time is required" }),
-  name: z.string().trim().min(1, { message: "Medication name is required" }),
-  type: z.string().optional(),
-  dose: z.coerce.number().gt(0, { message: "Dose must be greater than 0" }),
-  unit: z.string().min(1, { message: "Unit is required" }),
-  route: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-/* Table data */
-const dayRows = computed(() => med.logsForDate(viewDate.value.toString()));
-const tableData = computed(() => [...dayRows.value]);
-
-/* Columns (desktop) */
-const columns = [
-  {
-    accessorKey: "datetimeIso",
-    header: "Date/Time",
-    cell: ({ row }) => formatDateTime(row.original.datetimeIso),
-  },
-  { accessorKey: "name", header: "Medication" },
-  {
-    id: "dose",
-    header: "Dose",
-  },
-  {
-    accessorKey: "type",
-    header: "Type",
-    cell: ({ row }) => typeLabel(row.original.type),
-  },
-  {
-    accessorKey: "route",
-    header: "Route",
-    cell: ({ row }) => routeLabel(row.original.route),
-  },
-  { id: "notes", header: "Notes" },
-  { id: "actions", header: "Actions" },
-];
-
-/* Utils */
 function formatDateTime(isoLike) {
   if (!isoLike) return "";
   const d = new Date(isoLike);
   return d.toLocaleString();
 }
 
-/* Delete modal */
-const confirmOpen = ref(false);
-const pendingItem = ref(null);
+// form
+const form = reactive({
+  datetimeIso: toLocalDatetimeInput(new Date()),
+  medId: undefined,
+  medLabel: "",
+  class: "",
+  route: "oral",
+  dose: 0,
+  unit: "mg",
+  notes: "",
+});
 
-function askDelete(item) {
-  pendingItem.value = item;
-  confirmOpen.value = true;
-}
-function confirmDelete() {
-  const id = pendingItem.value?.id;
-  if (id == null) {
-    confirmOpen.value = false;
-    return;
-  }
-  const removed = pendingItem.value;
-  med.deleteLog(id);
-  toast.add({
-    title: "Medication removed",
-    description: `${formatDateTime(removed.datetimeIso)} • ${removed.name} • ${
-      removed.dose
-    } ${removed.unit}`,
-    icon: "i-lucide-trash-2",
-    color: "error",
-  });
-  confirmOpen.value = false;
-  pendingItem.value = null;
+// aplica preset no form
+function applyPreset(preset) {
+  form.medId = preset.id;
+  form.medLabel = preset.label;
+  form.class = preset.class;
+  form.route = preset.route;
+  form.unit = preset.unit;
+  form.dose = preset.defaultDose ?? 0;
 }
 
-/* Submit */
+// validação
+const schema = z.object({
+  datetimeIso: z.string().min(1, { message: "Date & time is required" }),
+  medId: z.string().min(1, { message: "Medication is required" }),
+  dose: z.coerce.number().positive({ message: "Dose must be > 0" }),
+  unit: z.string().min(1, { message: "Unit is required" }),
+  route: z.string().min(1, { message: "Route is required" }),
+  notes: z.string().optional(),
+});
+
+// tabela / cards
+const dayRows = computed(() => m.logsForDate(viewDate.value.toString()));
+const tableData = computed(() => dayRows.value);
+
+// colunas desktop
+const columns = [
+  {
+    accessorKey: "datetimeIso",
+    header: "Date/Time",
+    cell: ({ row }) => formatDateTime(row.original.datetimeIso),
+  },
+  { accessorKey: "medLabel", header: "Medication" },
+  {
+    accessorKey: "dose",
+    header: "Dose",
+    cell: ({ row }) => `${row.original.dose} ${row.original.unit}`,
+  },
+  { accessorKey: "route", header: "Route" },
+  {
+    accessorKey: "class",
+    header: "Class",
+    cell: ({ row }) =>
+      h("div", {}, [h("span", { class: "inline-flex" }, row.original.class)]),
+  },
+  { id: "notes", header: "Notes" },
+  { id: "actions", header: "Actions" },
+];
+
+// submit
 async function onSubmit() {
-  const payload = { ...form };
-  med.addLog(payload);
+  // preencher campos derivados do preset selecionado (caso o usuário tenha escolhido via select)
+  const p = m.presets.find((x) => x.id === form.medId);
+  if (p) {
+    form.medLabel = p.label;
+    form.class = p.class;
+    if (!form.unit) form.unit = p.unit;
+    if (!form.route) form.route = p.route;
+    if (!form.dose) form.dose = p.defaultDose ?? 0;
+  }
+
+  const payload = {
+    date: viewDate.value.toString(),
+    datetimeIso: form.datetimeIso,
+    medId: form.medId,
+    medLabel: form.medLabel,
+    class: form.class,
+    route: form.route,
+    dose: form.dose,
+    unit: form.unit,
+    notes: form.notes,
+  };
+
+  const added = m.addLog(payload);
 
   toast.add({
     title: "Medication added",
-    description: `${formatDateTime(payload.datetimeIso)} • ${payload.name} • ${
-      payload.dose
-    } ${payload.unit}`,
+    description: `${formatDateTime(payload.datetimeIso)} • ${
+      payload.medLabel
+    } • ${payload.dose} ${payload.unit}`,
     icon: "i-lucide-check",
     color: "success",
   });
 
-  // reset rápido
+  // reset mantendo bucket e hora atual
   form.datetimeIso = toLocalDatetimeInput(new Date());
-  form.name = "";
-  form.type = "other";
-  form.dose = 1;
-  form.unit = "mg";
+  form.medId = undefined;
+  form.medLabel = "";
+  form.class = "";
   form.route = "oral";
+  form.dose = 0;
+  form.unit = "mg";
   form.notes = "";
 }
 
@@ -459,5 +515,31 @@ function onFormError(e) {
     icon: "i-lucide-alert-triangle",
     color: "error",
   });
+}
+
+// delete modal
+const confirmOpen = ref(false);
+const pendingItem = ref(null);
+
+function askDelete(item) {
+  pendingItem.value = item;
+  confirmOpen.value = true;
+}
+function confirmDelete() {
+  const id = pendingItem.value?.id;
+  if (!id) {
+    confirmOpen.value = false;
+    return;
+  }
+  const removed = pendingItem.value;
+  m.deleteLog(id);
+  toast.add({
+    title: "Medication removed",
+    description: `${formatDateTime(removed.datetimeIso)} • ${removed.medLabel}`,
+    icon: "i-lucide-trash-2",
+    color: "error",
+  });
+  confirmOpen.value = false;
+  pendingItem.value = null;
 }
 </script>

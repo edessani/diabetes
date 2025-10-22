@@ -5,24 +5,24 @@ const route = useRoute();
 
 const items = computed<NavigationMenuItem[]>(() => [
   {
-    label: "Dashboard",
-    icon: "i-lucide-rocket",
-    to: "/",
-  },
-  {
     label: "Food Intake",
     to: "/food-intake",
-    icon: "i-lucide-book-open",
+    icon: "i-lucide-pizza",
   },
   {
     label: "Glucose Level",
     to: "/glucose-level",
-    icon: "i-lucide-box",
+    icon: "i-lucide-boxes",
   },
   {
     label: "Medication Tracking",
-    icon: "i-simple-icons-figma",
+    icon: "i-lucide-pill-bottle",
     to: "/medication-tracking",
+  },
+  {
+    label: "Dashboard",
+    icon: "i-lucide-chart-line",
+    to: "/dashboard",
   },
 ]);
 </script>

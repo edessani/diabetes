@@ -4,3 +4,8 @@
     <!-- <AppAlert> This is an auto-imported component </AppAlert> -->
   </div>
 </template>
+<script setup>
+definePageMeta({
+  redirect: "/food-intake",
+});
+</script>

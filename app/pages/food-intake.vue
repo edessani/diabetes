@@ -10,8 +10,10 @@
         <!-- Date Selection -->
         <UCard>
           <template #header>
-            <h3 class="text-lg font-semibold col-span-1 lg:col-span-5">
-              Choose the Entry Date
+            <h3
+              class="text-sm md:text-base lg:text-lg font-semibold col-span-1 lg:col-span-5"
+            >
+              Choose the Day to View and Record Food Intake
             </h3>
           </template>
 
@@ -63,6 +65,8 @@
                   v-model="foodState.id"
                   :items="foodOptions"
                   value-key="value"
+                  color="neutral"
+                  variant="subtle"
                 />
               </UFormField>
             </div>
@@ -74,6 +78,8 @@
                   placeholder="unit"
                   class="w-full"
                   disabled
+                  color="neutral"
+                  variant="subtle"
                 />
               </UFormField>
             </div>
@@ -91,6 +97,7 @@
                   placeholder="Enter quantity"
                   class="w-full"
                   color="neutral"
+                  variant="subtle"
                 />
               </UFormField>
             </div>
@@ -101,6 +108,8 @@
                   :value="(foodState.calories || 0) * (foodState.quantity || 1)"
                   class="w-full"
                   disabled
+                  color="neutral"
+                  variant="subtle"
                 />
               </UFormField>
             </div>
@@ -111,6 +120,8 @@
                   :value="(foodState.protein || 0) * (foodState.quantity || 1)"
                   class="w-full"
                   disabled
+                  color="neutral"
+                  variant="subtle"
                 />
               </UFormField>
             </div>
@@ -121,6 +132,8 @@
                   :value="(foodState.carbs || 0) * (foodState.quantity || 1)"
                   class="w-full"
                   disabled
+                  color="neutral"
+                  variant="subtle"
                 />
               </UFormField>
             </div>
@@ -221,7 +234,7 @@
               </UCard>
 
               <!-- NEW (mobile): totais -->
-              <UCard class="p-3">
+              <UCard class="p-3" variant="subtle">
                 <div class="flex items-center justify-between">
                   <div class="text-sm text-muted-foreground">Totals</div>
                 </div>
