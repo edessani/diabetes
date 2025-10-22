@@ -40,13 +40,15 @@
             </template>
           </UPopover>
         </UCard>
-        <!-- ====== KPIs today ====== -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           <ClientOnly>
             <UCard>
-              <template #header>
-                <div class="font-medium">Carbs in range</div>
-              </template>
+              <template #header
+                ><div class="font-medium text-sm">
+                  Total Carbs in date range
+                </div></template
+              >
               <div class="text-2xl font-semibold">
                 {{ fmt(totalsInRange.carbs) }} g
               </div>
@@ -56,9 +58,11 @@
             </UCard>
 
             <UCard>
-              <template #header>
-                <div class="font-medium">Calories in range</div>
-              </template>
+              <template #header
+                ><div class="font-medium text-sm">
+                  Total Calories in date range
+                </div></template
+              >
               <div class="text-2xl font-semibold">
                 {{ fmt(totalsInRange.calories) }}
               </div>
@@ -67,10 +71,27 @@
               </div>
             </UCard>
 
+            <!-- NOVO: Protein -->
             <UCard>
-              <template #header>
-                <div class="font-medium">Avg glucose (range)</div>
-              </template>
+              <template #header
+                ><div class="font-medium text-sm">
+                  Total Protein in date range
+                </div></template
+              >
+              <div class="text-2xl font-semibold">
+                {{ fmt(totalsInRange.protein) }} g
+              </div>
+              <div class="text-sm text-muted-foreground">
+                sum of all entries
+              </div>
+            </UCard>
+
+            <UCard>
+              <template #header
+                ><div class="font-medium text-sm">
+                  Avg glucose in date range
+                </div></template
+              >
               <div class="text-2xl font-semibold">
                 {{ glucoseAvgInRange ?? "—" }} mg/dL
               </div>
@@ -80,9 +101,11 @@
             </UCard>
 
             <UCard>
-              <template #header>
-                <div class="font-medium">Medications (range)</div>
-              </template>
+              <template #header
+                ><div class="font-medium text-sm">
+                  Medications in date range
+                </div></template
+              >
               <div class="text-2xl font-semibold">{{ medsCountInRange }}</div>
               <div class="text-sm text-muted-foreground">taken/registered</div>
             </UCard>
@@ -90,25 +113,56 @@
         </div>
 
         <!-- ====== Charts ====== -->
+        <!-- Linha 1: 3 gráficos (food) -->
         <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Food over time -->
+          <UCard :variant="isDark ? 'solid' : 'outline'">
+            <template #header
+              ><h3 class="text-lg font-semibold">Carbs over time</h3></template
+            >
+            <ClientOnly>
+              <ApexChart
+                type="area"
+                height="320"
+                :options="carbsOpts"
+                :series="carbsSeries"
+              />
+            </ClientOnly>
+          </UCard>
+
           <UCard :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
-                Food intake over time
+                Calories over time
               </h3></template
             >
             <ClientOnly>
               <ApexChart
                 type="area"
                 height="320"
-                :options="foodOpts"
-                :series="foodSeries"
-              ></ApexChart>
+                :options="caloriesOpts"
+                :series="caloriesSeries"
+              />
             </ClientOnly>
           </UCard>
 
-          <!-- Glucose over time -->
+          <UCard :variant="isDark ? 'solid' : 'outline'">
+            <template #header
+              ><h3 class="text-lg font-semibold">
+                Protein over time
+              </h3></template
+            >
+            <ClientOnly>
+              <ApexChart
+                type="area"
+                height="320"
+                :options="proteinOpts"
+                :series="proteinSeries"
+              />
+            </ClientOnly>
+          </UCard>
+        </div>
+        <!-- Linha 2: 2 gráficos (glucose & meds) -->
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <UCard :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
@@ -121,11 +175,10 @@
                 height="320"
                 :options="glucoseOpts"
                 :series="glucoseSeries"
-              ></ApexChart>
+              />
             </ClientOnly>
           </UCard>
 
-          <!-- Medications over time -->
           <UCard :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
@@ -138,7 +191,7 @@
                 height="320"
                 :options="medOpts"
                 :series="medSeries"
-              ></ApexChart>
+              />
             </ClientOnly>
           </UCard>
         </div>
@@ -261,18 +314,22 @@ const foodAgg = computed(() => {
   return { cal, pro, carb };
 });
 
-const foodSeries = computed(() => [
+const caloriesSeries = computed(() => [
   {
     name: "Calories",
     data: rangeKeys.value.map((k) => ({ x: k, y: foodAgg.value.cal.get(k) })),
   },
-  {
-    name: "Protein (g)",
-    data: rangeKeys.value.map((k) => ({ x: k, y: foodAgg.value.pro.get(k) })),
-  },
+]);
+const carbsSeries = computed(() => [
   {
     name: "Carbs (g)",
     data: rangeKeys.value.map((k) => ({ x: k, y: foodAgg.value.carb.get(k) })),
+  },
+]);
+const proteinSeries = computed(() => [
+  {
+    name: "Protein (g)",
+    data: rangeKeys.value.map((k) => ({ x: k, y: foodAgg.value.pro.get(k) })),
   },
 ]);
 
@@ -316,10 +373,23 @@ const baseTimeOpts = {
   xaxis: { type: "datetime" },
   tooltip: { shared: false, x: { format: "yyyy-MM-dd" } },
 };
-const foodOpts = {
+const caloriesOpts = {
   ...baseTimeOpts,
+  yaxis: { title: { text: "Calories" }, min: 0 },
   dataLabels: { enabled: false },
-  legend: { position: "top" },
+  legend: { show: false },
+};
+const carbsOpts = {
+  ...baseTimeOpts,
+  yaxis: { title: { text: "Carbs (g)" }, min: 0 },
+  dataLabels: { enabled: false },
+  legend: { show: false },
+};
+const proteinOpts = {
+  ...baseTimeOpts,
+  yaxis: { title: { text: "Protein (g)" }, min: 0 },
+  dataLabels: { enabled: false },
+  legend: { show: false },
 };
 const glucoseOpts = computed(() => ({
   ...baseTimeOpts,
