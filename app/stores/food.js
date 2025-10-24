@@ -911,6 +911,7 @@ export const useFoodStore = defineStore(
       },
     ];
 
+    const authStatus = ref(false);
     // Logs persistidos com ref para reatividade
     const logs = ref([]);
 
@@ -958,6 +959,7 @@ export const useFoodStore = defineStore(
     return {
       foodDatabase,
       logs,
+      authStatus,
       logsForDate,
       addLog,
       updateLog,

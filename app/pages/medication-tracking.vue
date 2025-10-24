@@ -349,7 +349,7 @@
 
 <script setup>
 import { useMedicationStore } from "~/stores/medication";
-import { shallowRef, ref, reactive, computed } from "vue";
+import { shallowRef, ref, reactive, computed, watch } from "vue";
 import {
   CalendarDate,
   DateFormatter,
@@ -392,6 +392,18 @@ const toLocalDatetimeInput = (d = new Date()) =>
     d.getHours()
   )}:${pad2(d.getMinutes())}`;
 
+const calendarWithTime = (calendarDate, sourceDate = new Date()) => {
+  if (!calendarDate) return sourceDate;
+  const next = calendarDate.toDate(getLocalTimeZone());
+  next.setHours(
+    sourceDate.getHours(),
+    sourceDate.getMinutes(),
+    sourceDate.getSeconds(),
+    sourceDate.getMilliseconds()
+  );
+  return next;
+};
+
 function formatDateTime(isoLike) {
   if (!isoLike) return "";
   const d = new Date(isoLike);
@@ -408,6 +420,14 @@ const form = reactive({
   dose: 0,
   unit: "mg",
   notes: "",
+});
+
+watch(viewDate, (calendarDate) => {
+  if (!calendarDate) return;
+  const base = form.datetimeIso ? new Date(form.datetimeIso) : new Date();
+  form.datetimeIso = toLocalDatetimeInput(
+    calendarWithTime(calendarDate, base)
+  );
 });
 
 // aplica preset no form
@@ -494,7 +514,9 @@ async function onSubmit() {
   });
 
   // reset mantendo bucket e hora atual
-  form.datetimeIso = toLocalDatetimeInput(new Date());
+  form.datetimeIso = toLocalDatetimeInput(
+    calendarWithTime(viewDate.value, new Date())
+  );
   form.medId = undefined;
   form.medLabel = "";
   form.class = "";

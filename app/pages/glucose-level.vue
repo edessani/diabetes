@@ -458,7 +458,7 @@
 
 <script setup>
 import { useGlucoseStore } from "~/stores/glucose";
-import { shallowRef, ref, reactive, computed } from "vue";
+import { shallowRef, ref, reactive, computed, watch } from "vue";
 import {
   CalendarDate,
   DateFormatter,
@@ -489,11 +489,29 @@ const toLocalDatetimeInput = (d = new Date()) =>
     d.getHours()
   )}:${pad2(d.getMinutes())}`;
 
+const calendarWithTime = (calendarDate, sourceDate = new Date()) => {
+  if (!calendarDate) return sourceDate;
+  const next = calendarDate.toDate(getLocalTimeZone());
+  next.setHours(
+    sourceDate.getHours(),
+    sourceDate.getMinutes(),
+    sourceDate.getSeconds(),
+    sourceDate.getMilliseconds()
+  );
+  return next;
+};
+
 const form = reactive({
   datetimeIso: toLocalDatetimeInput(new Date()),
   value: 110,
   context: "fasting",
   notes: "",
+});
+
+watch(viewDate, (calendarDate) => {
+  if (!calendarDate) return;
+  const base = form.datetimeIso ? new Date(form.datetimeIso) : new Date();
+  form.datetimeIso = toLocalDatetimeInput(calendarWithTime(calendarDate, base));
 });
 
 /* Validation */
@@ -670,7 +688,9 @@ async function onSubmit() {
     icon: "i-lucide-check",
     color: "success",
   });
-  form.datetimeIso = toLocalDatetimeInput(new Date());
+  form.datetimeIso = toLocalDatetimeInput(
+    calendarWithTime(viewDate.value, new Date())
+  );
   form.value = 110;
   form.notes = "";
 }
