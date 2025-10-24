@@ -41,9 +41,9 @@
           </UPopover>
         </UCard>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
           <ClientOnly>
-            <UCard>
+            <UCard class="shadow-md">
               <template #header
                 ><div class="font-medium text-sm">
                   Total Carbs in date range
@@ -53,11 +53,11 @@
                 {{ fmt(totalsInRange.carbs) }} g
               </div>
               <div class="text-sm text-muted-foreground">
-                from {{ mealsInRange }} meals
+                {{ mealsInRange }} meals | AVG {{ fmt((totalsInRange.carbs / mealsInRange).toFixed(2)) }} g
               </div>
             </UCard>
 
-            <UCard>
+            <UCard class="shadow-md">
               <template #header
                 ><div class="font-medium text-sm">
                   Total Calories in date range
@@ -67,12 +67,12 @@
                 {{ fmt(totalsInRange.calories) }}
               </div>
               <div class="text-sm text-muted-foreground">
-                sum of all entries
+                {{ mealsInRange }} meals | AVG {{ fmt((totalsInRange.calories / mealsInRange).toFixed(2)) }} cal
               </div>
             </UCard>
 
             <!-- NOVO: Protein -->
-            <UCard>
+            <UCard class="shadow-md">
               <template #header
                 ><div class="font-medium text-sm">
                   Total Protein in date range
@@ -82,11 +82,11 @@
                 {{ fmt(totalsInRange.protein) }} g
               </div>
               <div class="text-sm text-muted-foreground">
-                sum of all entries
+                {{ mealsInRange }} meals | AVG {{ fmt((totalsInRange.protein / mealsInRange).toFixed(2)) }} g
               </div>
             </UCard>
 
-            <UCard>
+            <UCard class="shadow-md">
               <template #header
                 ><div class="font-medium text-sm">
                   Avg glucose in date range
@@ -100,7 +100,7 @@
               </div>
             </UCard>
 
-            <UCard>
+            <UCard class="shadow-md">
               <template #header
                 ><div class="font-medium text-sm">
                   Medications in date range
@@ -114,8 +114,8 @@
 
         <!-- ====== Charts ====== -->
         <!-- Linha 1: 3 gráficos (food) -->
-        <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <UCard :variant="isDark ? 'solid' : 'outline'">
+        <div class="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <UCard class="shadow-md" :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">Carbs over time</h3></template
             >
@@ -129,7 +129,7 @@
             </ClientOnly>
           </UCard>
 
-          <UCard :variant="isDark ? 'solid' : 'outline'">
+          <UCard class="shadow-md" :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
                 Calories over time
@@ -145,7 +145,7 @@
             </ClientOnly>
           </UCard>
 
-          <UCard :variant="isDark ? 'solid' : 'outline'">
+          <UCard class="shadow-md" :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
                 Protein over time
@@ -163,7 +163,7 @@
         </div>
         <!-- Linha 2: 2 gráficos (glucose & meds) -->
         <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UCard :variant="isDark ? 'solid' : 'outline'">
+          <UCard class="shadow-md" :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
                 Average glucose over time
@@ -179,7 +179,7 @@
             </ClientOnly>
           </UCard>
 
-          <UCard :variant="isDark ? 'solid' : 'outline'">
+          <UCard class="shadow-md" :variant="isDark ? 'solid' : 'outline'">
             <template #header
               ><h3 class="text-lg font-semibold">
                 Medications per day
@@ -220,7 +220,7 @@ const isDark = computed(() => colorMode.value === "dark");
 const df = new DateFormatter("en-US", { dateStyle: "medium" });
 const today = new Date();
 const start10 = new Date(today);
-start10.setDate(today.getDate() - 9);
+start10.setDate(today.getDate() - 6);
 
 const range = shallowRef({
   start: new CalendarDate(
